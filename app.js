@@ -94,9 +94,8 @@ async function load() { S.me = await api('me'); S.offset = Date.parse(S.me.now) 
 
 function main() {
   const m = S.me;
-  app.innerHTML = `<div class="status"><h1 style="margin:0">${esc(m.name)}</h1><button class="btn ghost" id="out" style="width:auto;margin:0;padding:8px 14px">Done</button></div>
+  app.innerHTML = `<div class="status"><h1 style="margin:0">${esc(m.name)}</h1></div>
     <div class="tabs" style="margin-top:12px"><button data-t="today">Today</button><button data-t="history">My attendance</button><button data-t="leave">Leave</button></div><div id="tab"></div>`;
-  $('#out').onclick = () => signOut('Signed out.');
   app.querySelector('.tabs').onclick = e => { const t = e.target.closest('[data-t]')?.dataset.t; if (t) { S.tab = t; main(); } };
   app.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === S.tab));
   ({ today, history, leave })[S.tab]();
