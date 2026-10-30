@@ -6,6 +6,14 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmtT = iso => iso ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)) : '—';
 const fmtD = d => new Date(d + 'T12:00:00+08:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Singapore' });
 const sgToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' }).format(new Date());
+// Match the Driver App's personal-link pattern: ?u=<worker>. The link only
+// selects one worker; it never replaces the PIN or creates a session.
+const PERSONAL_WORKERS = Object.freeze({ rasu: 'Rasu', teh: 'Teh', yue: 'Yue', prabu: 'Prabu' });
+const personalKey = (() => {
+  try { return new URLSearchParams(location.search).get('u')?.trim().toLowerCase() || null; }
+  catch { return null; }
+})();
+const personalWorker = personalKey ? PERSONAL_WORKERS[personalKey] || null : null;
 let S = { token: null, name: null, me: null, tab: 'today', busy: false, offset: 0 };
 let idleTimer = null;
 const IDLE_MS = 120000;
@@ -32,10 +40,12 @@ function signOut(msg) { if (S.token) api('logout').catch(() => {}); S = { ...S, 
 
 // ---------- screens ----------
 async function home() {
-  app.innerHTML = '<h1>Who are you?</h1><div class="names" id="names"><p class="muted">Loading…</p></div><p class="muted small center" style="margin-top:18px">Tap your name, then enter onboarding PIN 1111 or your private 6-digit PIN.</p>';
+  app.innerHTML = `<h1>${personalWorker ? `Hi ${esc(personalWorker)}` : 'Who are you?'}</h1><div class="names" id="names"><p class="muted">Loading…</p></div><p class="muted small center" style="margin-top:18px">${personalWorker ? 'This is your personal Yard link. Your PIN is still required.' : 'Tap your name, then enter onboarding PIN 1111 or your private 6-digit PIN.'}</p>`;
   try {
     const { workers } = await api('public');
-    $('#names').innerHTML = workers.map(n => `<button class="name" data-n="${esc(n)}">${esc(n)}</button>`).join('');
+    const visible = personalWorker ? workers.filter(n => n === personalWorker) : workers;
+    if (personalWorker && !visible.length) throw new Error('This worker link is not active. Ask the office for help.');
+    $('#names').innerHTML = visible.map(n => `<button class="name" data-n="${esc(n)}">${esc(n)}</button>`).join('');
     $('#names').onclick = e => { const b = e.target.closest('[data-n]'); if (b) pinScreen(b.dataset.n); };
   } catch (e) { $('#names').innerHTML = `<p class="muted">${esc(e.message)}</p><button class="btn" id="retry">Try again</button>`; $('#retry').onclick = home; }
 }
